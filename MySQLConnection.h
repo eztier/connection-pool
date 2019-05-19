@@ -21,7 +21,7 @@
 #include <cppconn/prepared_statement.h>
 #include <cppconn/statement.h>
 
-using boost::shared_ptr;
+using std::shared_ptr;
 
 namespace active911 {
 
@@ -44,7 +44,7 @@ namespace active911 {
 
 		};
 
-		boost::shared_ptr<sql::Connection> sql_connection;
+		std::shared_ptr<sql::Connection> sql_connection;
 		int a;
 	};
 
@@ -71,9 +71,9 @@ namespace active911 {
 			shared_ptr<MySQLConnection>conn(new MySQLConnection());
 
 			// Connect
-			conn->sql_connection=boost::shared_ptr<sql::Connection>(driver->connect(this->server,this->username,this->password));
+			conn->sql_connection=std::shared_ptr<sql::Connection>(driver->connect(this->server,this->username,this->password));
 
-			return boost::static_pointer_cast<Connection>(conn);
+			return std::static_pointer_cast<Connection>(conn);
 		};
 
 	private:

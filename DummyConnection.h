@@ -14,7 +14,7 @@
  */
 
 #include "ConnectionPool.h"
-using boost::shared_ptr;
+using std::shared_ptr;
 
 namespace active911 {
 
@@ -58,7 +58,7 @@ namespace active911 {
 
 			// Perform some kind of ->connect operation here
 
-			return boost::static_pointer_cast<Connection>(conn);
+			return std::static_pointer_cast<Connection>(conn);
 		};
 
 	};
