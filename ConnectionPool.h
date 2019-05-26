@@ -29,6 +29,7 @@
 	#define _DEBUG(x)
 #endif
 
+#pragma once
 
 #include <memory>
 #include <mutex>
