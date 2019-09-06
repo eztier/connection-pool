@@ -47,15 +47,26 @@ namespace com::eztier {
 			std::shared_ptr<PostgreSQLConnection>conn(new PostgreSQLConnection());
 
       db::postgres::Settings settings{true};
-      auto cnx = new db::postgres::Connection(settings);
       
-      // Connect
-      // postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]
-      stringstream ss;
-      ss << "postgresql://" << username << ":" << password << "@" << server << ":" << port << "/" << database;
-			cnx->connect(ss.str().c_str());
+			db::postgres::Connection* cnx;
+			
+			try {
+				cnx = new db::postgres::Connection(settings);
+				
+				// Connect
+				// postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]
+				stringstream ss;
+				ss << "postgresql://" << username << ":" << password << "@" << server << ":" << port << "/" << database;
+				cnx->connect(ss.str().c_str());
 
-      conn->sql_connection=std::shared_ptr<db::postgres::Connection>(cnx);
+				conn->sql_connection=std::shared_ptr<db::postgres::Connection>(cnx);
+			} catch (const db::postgres::ConnectionException& e) {
+				std::cerr << e.what() << endl;
+				throw;
+			} catch (const std::exception& e) {
+				std::cerr << "Unexpected error: " << e.what() << endl;
+				throw;
+			}
 
 			return std::static_pointer_cast<Connection>(conn);
 		};

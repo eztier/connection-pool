@@ -44,19 +44,28 @@ namespace com::eztier {
 			// Create the connection
 			std::shared_ptr<MSSQLConnection>conn(new MSSQLConnection());
 
-      auto cnx = new TDSPP();
-      
-      // Connect
-      stringstream ss;
-      ss << server << ":" << port;
-      cnx->connect(ss.str(), username, password);
-      ss.str("");
-      ss.clear();
-      ss << "use " << database;
-      cnx->execute(ss.str());
+			TDSPP* cnx;
 
-      conn->sql_connection=std::shared_ptr<TDSPP>(cnx);
+			try {
+				cnx = new TDSPP();
+				
+				// Connect
+				stringstream ss;
+				ss << server << ":" << port;
+				cnx->connect(ss.str(), username, password);
+				ss.str("");
+				ss.clear();
+				ss << "use " << database;
+				cnx->execute(ss.str());
 
+				conn->sql_connection=std::shared_ptr<TDSPP>(cnx);
+			} catch (const TDSPP::Exception& e) {
+				std::cerr << e.message << endl;
+				throw;
+			} catch (const std::exception& e) {
+				std::cerr << e.what() << endl;
+				throw;
+			}
 			// return boost::static_pointer_cast<Connection>(conn);
       return std::static_pointer_cast<Connection>(conn);
 		};

@@ -44,15 +44,25 @@ namespace com::eztier {
 			// Create the connection
 			std::shared_ptr<MSSQLDbLibConnection>conn(new MSSQLDbLibConnection());
 
-      auto cnx = new tds::TDSClient();
-      
-      // Connect
-      stringstream ss;
-      ss << server << ":" << port;
-      cnx->connect(ss.str(), username, password);
-      cnx->useDatabase(database);
+			tds::TDSClient* cnx;
 
-      conn->sql_connection=std::shared_ptr<tds::TDSClient>(cnx);
+      try {
+				cnx = new tds::TDSClient();
+				
+				// Connect
+				stringstream ss;
+				ss << server << ":" << port;
+				cnx->connect(ss.str(), username, password);
+				cnx->useDatabase(database);
+
+				conn->sql_connection=std::shared_ptr<tds::TDSClient>(cnx);
+			} catch (const tds::TDSException& e) {
+				std::cerr << e.what() << endl;
+				throw;
+			} catch (const std::exception& e) {
+				std::cerr << e.what() << endl;
+				throw;
+			}
 
 			return std::static_pointer_cast<Connection>(conn);
 		};
