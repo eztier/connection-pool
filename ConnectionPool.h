@@ -37,6 +37,7 @@
 #include <set>
 #include <exception>
 #include <string>
+#include <condition_variable>
 using namespace std;
 
 namespace active911 {
@@ -119,12 +120,14 @@ namespace active911 {
 		 * @retval a std::shared_ptr< to the connection object
 		 */
 		std::shared_ptr<T> borrow(){
-
 			// Lock
-			std::lock_guard<std::mutex> lock(this->io_mutex);
+			// std::lock_guard<std::mutex> lock(this->io_mutex);
+			std::unique_lock<std::mutex> lock(this->io_mutex);
+
+			this->condition.wait(lock, [this]{ return this->pool.size() > 0; });
 
 			// Check for a free connection
-			if(this->pool.size()==0){
+			// if(this->pool.size()==0){
 
 				// Are there any crashed connections listed as "borrowed"?
 				for(std::set<std::shared_ptr<Connection> >::iterator it=this->borrowed.begin(); it!=this->borrowed.end(); ++it){
@@ -150,8 +153,8 @@ namespace active911 {
 				}
 
 				// Nothing available
-				throw ConnectionUnavailable();
-			}
+				// throw ConnectionUnavailable();
+			// }
 
 			// Take one off the front
 			std::shared_ptr<Connection>conn=this->pool.front();
@@ -170,16 +173,18 @@ namespace active911 {
 		 * @param the connection
 		 */
 		void unborrow(std::shared_ptr<T> conn) {
+			{
+				// Lock
+				// std::lock_guard<std::mutex> lock(this->io_mutex);
+				std::unique_lock<std::mutex> lock(this->io_mutex);
 
-			// Lock
-			std::lock_guard<std::mutex> lock(this->io_mutex);
+				// Push onto the pool
+				this->pool.push_back(std::static_pointer_cast<Connection>(conn));
 
-			// Push onto the pool
-			this->pool.push_back(std::static_pointer_cast<Connection>(conn));
-
-			// Unborrow
-			this->borrowed.erase(conn);
-
+				// Unborrow
+				this->borrowed.erase(conn);
+			}
+			condition.notify_one();
 		};
 
 	protected:
@@ -188,6 +193,7 @@ namespace active911 {
 		deque<std::shared_ptr<Connection>> pool;
 		set<std::shared_ptr<Connection>> borrowed;
 		std::mutex io_mutex;
+		std::condition_variable condition;
 	};
 
 
