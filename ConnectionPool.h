@@ -116,31 +116,38 @@ namespace active911 {
 			// Lock
 			std::unique_lock<std::mutex> lock(this->io_mutex);
 
-			this->condition.wait(lock, [this]{ return this->pool.size() > 0; });
+			// this->condition.wait(lock, [this]{ return this->pool.size() > 0; });
+			this->condition.wait(lock);
 
-			// Are there any crashed connections listed as "borrowed"?
-			for(std::set<std::shared_ptr<Connection> >::iterator it=this->borrowed.begin(); it!=this->borrowed.end(); ++it){
+			// Check for a free connection
+			if(this->pool.size()==0){
 
-				if((*it).unique()) {
+				// Are there any crashed connections listed as "borrowed"?
+				for(std::set<std::shared_ptr<Connection> >::iterator it=this->borrowed.begin(); it!=this->borrowed.end(); ++it){
 
-					// This connection has been abandoned! Destroy it and create a new connection
-					try {
+					if((*it).unique()) {
 
-						// If we are able to create a new connection, return it
-						_DEBUG("Creating new connection to replace discarded connection");
-						std::shared_ptr<Connection> conn=this->factory->create();
-						this->borrowed.erase(it);
-						this->borrowed.insert(conn);
-						return std::static_pointer_cast<T>(conn);
+						// This connection has been abandoned! Destroy it and create a new connection
+						try {
 
-					} catch(std::exception& e) {
+							// If we are able to create a new connection, return it
+							_DEBUG("Creating new connection to replace discarded connection");
+							std::shared_ptr<Connection> conn=this->factory->create();
+							this->borrowed.erase(it);
+							this->borrowed.insert(conn);
+							return std::static_pointer_cast<T>(conn);
 
-						// Error creating a replacement connection
-						throw ConnectionUnavailable();
+						} catch(std::exception& e) {
+
+							// Error creating a replacement connection
+							throw ConnectionUnavailable();
+						}
 					}
 				}
-			}
 
+				// Nothing available
+				throw ConnectionUnavailable();
+			}
 			// Take one off the front
 			std::shared_ptr<Connection>conn=this->pool.front();
 			this->pool.pop_front();
