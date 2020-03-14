@@ -116,9 +116,8 @@ namespace active911 {
 			// Lock
 			std::unique_lock<std::mutex> lock(this->io_mutex);
 
-			// this->condition.wait(lock, [this]{ return this->pool.size() > 0; });
-			this->condition.wait(lock);
-
+			this->condition.wait(lock, [this]{ return this->pool.size() > 0; });
+			
 			// Check for a free connection
 			if(this->pool.size()==0){
 
