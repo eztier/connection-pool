@@ -42,22 +42,17 @@ using namespace std;
 
 namespace active911 {
 
-
-	struct ConnectionUnavailable : std::exception { 
-
+	struct ConnectionUnavailable : std::exception {
 		char const* what() const throw() {
-
 			return "Unable to allocate connection";
 		}; 
 	};
-
 
 	class Connection {
 
 	public:
 		Connection(){};
 		virtual ~Connection(){};
-
 	};
 
 	class ConnectionFactory {
@@ -103,11 +98,9 @@ namespace active911 {
 				this->pool.push_back(this->factory->create());
 			}
 
-
 		};
 
 		~ConnectionPool() {
-
 
 		};
 
@@ -121,40 +114,32 @@ namespace active911 {
 		 */
 		std::shared_ptr<T> borrow(){
 			// Lock
-			// std::lock_guard<std::mutex> lock(this->io_mutex);
 			std::unique_lock<std::mutex> lock(this->io_mutex);
 
 			this->condition.wait(lock, [this]{ return this->pool.size() > 0; });
 
-			// Check for a free connection
-			// if(this->pool.size()==0){
+			// Are there any crashed connections listed as "borrowed"?
+			for(std::set<std::shared_ptr<Connection> >::iterator it=this->borrowed.begin(); it!=this->borrowed.end(); ++it){
 
-				// Are there any crashed connections listed as "borrowed"?
-				for(std::set<std::shared_ptr<Connection> >::iterator it=this->borrowed.begin(); it!=this->borrowed.end(); ++it){
+				if((*it).unique()) {
 
-					if((*it).unique()) {
+					// This connection has been abandoned! Destroy it and create a new connection
+					try {
 
-						// This connection has been abandoned! Destroy it and create a new connection
-						try {
+						// If we are able to create a new connection, return it
+						_DEBUG("Creating new connection to replace discarded connection");
+						std::shared_ptr<Connection> conn=this->factory->create();
+						this->borrowed.erase(it);
+						this->borrowed.insert(conn);
+						return std::static_pointer_cast<T>(conn);
 
-							// If we are able to create a new connection, return it
-							_DEBUG("Creating new connection to replace discarded connection");
-							std::shared_ptr<Connection> conn=this->factory->create();
-							this->borrowed.erase(it);
-							this->borrowed.insert(conn);
-							return std::static_pointer_cast<T>(conn);
+					} catch(std::exception& e) {
 
-						} catch(std::exception& e) {
-
-							// Error creating a replacement connection
-							throw ConnectionUnavailable();
-						}
+						// Error creating a replacement connection
+						throw ConnectionUnavailable();
 					}
 				}
-
-				// Nothing available
-				// throw ConnectionUnavailable();
-			// }
+			}
 
 			// Take one off the front
 			std::shared_ptr<Connection>conn=this->pool.front();
@@ -175,7 +160,6 @@ namespace active911 {
 		void unborrow(std::shared_ptr<T> conn) {
 			{
 				// Lock
-				// std::lock_guard<std::mutex> lock(this->io_mutex);
 				std::unique_lock<std::mutex> lock(this->io_mutex);
 
 				// Push onto the pool
@@ -195,8 +179,5 @@ namespace active911 {
 		std::mutex io_mutex;
 		std::condition_variable condition;
 	};
-
-
-
 
 }
