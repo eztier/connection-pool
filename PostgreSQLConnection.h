@@ -12,19 +12,30 @@ using namespace active911;
 
 namespace com::eztier {
 
+	namespace postgresql {
+		class DbConnection : public db::postgres::Connection, public std::enable_shared_from_this<DbConnection> {
+		public:
+			DbConnection(db::postgres::Settings settings): db::postgres::Connection(settings) {}
+
+			PGconn* getPGconn() {
+				return this->pgconn_;
+			}	
+		};
+	}
+
   class PostgreSQLConnection : public Connection {
 
 	public:
 		~PostgreSQLConnection() {
 			if(this->sql_connection) {
 				_DEBUG("PostgreSQL Destruct");
-
+				
 				this->sql_connection->close();
 				this->sql_connection.reset(); 	// Release and destruct				
 			}
 		};
 
-		std::shared_ptr<db::postgres::Connection> sql_connection;
+		std::shared_ptr<postgresql::DbConnection> sql_connection;
 		int a;
 	};
 
@@ -48,10 +59,10 @@ namespace com::eztier {
 
       db::postgres::Settings settings{true};
       
-			db::postgres::Connection* cnx;
+			postgresql::DbConnection* cnx;
 			
 			try {
-				cnx = new db::postgres::Connection(settings);
+				cnx = new postgresql::DbConnection(settings);
 				
 				// Connect
 				// postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]
@@ -59,7 +70,7 @@ namespace com::eztier {
 				ss << "postgresql://" << username << ":" << password << "@" << server << ":" << port << "/" << database;
 				cnx->connect(ss.str().c_str());
 
-				conn->sql_connection=std::shared_ptr<db::postgres::Connection>(cnx);
+				conn->sql_connection = std::shared_ptr<postgresql::DbConnection>(cnx);
 			} catch (const db::postgres::ConnectionException& e) {
 				std::cerr << e.what() << endl;
 				throw;
